@@ -1,1 +1,1 @@
-# ML_project
+# Training the model with predefined datasets
