@@ -9,7 +9,10 @@ This project focuses on implementing machine learning and AI techniques for clas
 - [Installation](#installation)
 - [Data Preparation](#data-preparation)
 - [Data Augmentation](#data-augmentation)
-- [Project Structure](#project-structure)
+- [Model Architecture](#model-architecture)
+- [Model Training](#model-training)
+- [Training Visualization](#training-visualization)
+- [Model Saving](#model-saving)
 ## Installation
 
 To run this project, you need to install the required dependencies. Execute the following command to install necessary packages:
@@ -76,4 +79,71 @@ pip install tensorflow matplotlib
     train_dir = os.path.join(base_dir, 'train')
     val_dir = os.path.join(base_dir, 'val')
     test_dir = os.path.join(base_dir, 'test')
+```
+
+## Data Augmentation
+1. Set batch size and image shape:
+```python
+    batch_size = 32
+    IMG_SHAPE = 256
+```
+2. Define data generators for training, validation, and testing:
+```python
+    train_datagen = ImageDataGenerator(rescale=1./255.,
+                                   horizontal_flip=True,
+                                   fill_mode='nearest',
+                                   zoom_range=0.2,
+                                   rotation_range=40,
+                                   shear_range=0.2)
+# ...
+```
+3. Visualize augmented images:
+```python
+    def plotImages(images_arr):
+    # ...
+    plotImages(augmented_images)
+```
+
+## Model Architecture
+1. Define the CNN model architecture:
+```python
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(256,256,3)),
+        tf.keras.layers.MaxPooling2D(2,2),
+        # ...
+        tf.keras.layers.Dense(21)
+    ])
+```
+2. Compile the model:
+```python
+    model.compile(optimizer='sgd',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+```
+
+## Model Training
+1. Train the model
+```python
+    epochs = 5
+
+    history = model.fit_generator(
+        train_generator,
+        epochs=epochs,
+        validation_data=validation_generator
+    )
+```
+
+## Training Visualization
+1. Visualize training progress:
+```python
+    train_acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    # ...
+
+```
+
+## Model Saving
+1. Save the trained model:
+```python
+    mymodel = model.save('model_v1.h5')
 ```
