@@ -17,7 +17,12 @@ This project focuses on implementing machine learning and AI techniques for clas
 - [Model Evaluation](#model-evaluation)
 - [Saving and Loading Models](#saving-and-loading-models)
 - [Image Prediction](#image-prediction)
-- [F1 Score Calculation](#f1-score-calculation)
+- [F1 Score Calculation for Inception Model](#f1-score-calculation-for-inception-model)
+- [Transfer Learning with MobileNet V2 Model](#transfer-learning-with-mobilenet-v2-model)
+- [F1 Score Calculation for MobileNet V2 Model](#f1-score-calculation-for-mobilenet-v2-model)
+- [Model Training Visualization](#model-training-visualization)
+- [Model Saving](#model-saving)
+- [Image Prediction](#image-prediction)
 
 ## Installation
 
@@ -271,7 +276,7 @@ train_datagen = ImageDataGenerator(rescale=1./255.,
         print(f"Probability: {probs[0][pred_index] * 100:.2f}%")
 ```
 
-## F1 Score Calculation
+## F1 Score Calculation for Inception Model
 1. Calculate and display the F1 score:
 ```python
     from sklearn.metrics import f1_score
@@ -282,4 +287,124 @@ train_datagen = ImageDataGenerator(rescale=1./255.,
     y_pred = np.argmax(y_pred, axis=1)
     f1score = f1_score(y_true, y_pred, average='weighted')
     print('F1 score:', f1score)
+```
+
+## Transfer Learning with MobileNet V2 Model
+1. Define augmented data generators for training and validation for MobileNet V2 model:
+```python
+    train_datagen = ImageDataGenerator(rescale=1./255.,
+                                   horizontal_flip=True,
+                                   fill_mode='nearest',
+                                   zoom_range=0.2,
+                                   rotation_range=40,
+                                   width_shift_range=0.2,
+                                   height_shift_range=0.2,
+                                   shear_range=0.2)
+# ...
+```
+2. Import MobileNet V2 feature extractor:
+```python
+    import tensorflow_hub as hub
+    URL = "https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/2"
+    feature_extractor = hub.KerasLayer(URL, input_shape=(224, 224, 3))
+```
+3. Set the feature extractor as non-trainable:
+```python
+    feature_extractor.trainable = False
+```
+4. Build the MobileNet V2 model:
+```python
+    model_mobile = tf.keras.Sequential([feature_extractor,
+                            layers.Dense(21)])
+```
+5. Compile and train the MobileNet V2 model:
+```python
+    !pip install tensorflow_addons
+    import tensorflow_addons as tfa
+    model_mobile.compile(optimizer='SGD',
+                loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                metrics=['accuracy'])
+    EPOCHS = 10
+
+    history = model_mobile.fit(train_generator,
+                        validation_data = validation_generator,
+                        epochs = EPOCHS)
+```
+6. Evaluate the MobileNet V2 model:
+```python
+    loss, accuracy = model_mobile.evaluate_generator(test_generator)
+    loss, accuracy
+```
+
+## F1 Score Calculation for MobileNet V2 Model
+1. Calculate and display the F1 score for the MobileNet V2 model:
+```python
+    from sklearn.metrics import f1_score
+    # Get predictions for the test set
+    y_pred = model_mobile.predict(test_generator)
+
+    # Calculate the F1 score
+    y_true = test_generator.classes
+    y_pred = np.argmax(y_pred, axis=1)
+    f1score = f1_score(y_true, y_pred, average='weighted')
+    print('F1 score:', f1score)
+```
+
+## Model Training Visualization
+1. Plot training and validation graphs for both models:
+```python
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    epochs_range = range(EPOCHS)
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, acc, label='Training Accuracy')
+    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+    plt.legend(loc='lower right')
+    plt.title('Training and Validation Accuracy')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, loss, label='Training Loss')
+    plt.plot(epochs_range, val_loss, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
+    plt.show()
+```
+
+## Model Saving
+1. Save the MobileNet V2 model:
+```python
+    model_mobile = model_mobile.save('model_mobilenet.h5', include_optimizer=True)
+```
+
+## Image Prediction
+1. Load and predict images using the MobileNet V2 model:
+```python
+    from google.colab import files
+    uploaded = files.upload()
+    for fn in uploaded.keys():
+        path = fn
+        img = tf.keras.utils.load_img(path, target_size=(224,224))
+        x = tf.keras.utils.img_to_array(img)
+        x = format_image(x, 224)
+        plt.imshow(x)
+        x = np.expand_dims(x, axis=0)
+
+        images = np.vstack([x])
+        logits = model_mobile.predict(images)
+        probs = tf.nn.softmax(logits)
+
+        # Get the predicted class with the highest probability
+        pred_index = np.argmax(probs)
+        #As index starts from zero, add 1 to index to identify class
+        pred_class = pred_index+1
+        # Print the predicted class and its probability
+        print(fn)
+        print(f"Predicted class: {classes[pred_index]}, Predicted index: {pred_index}")
+        print(f"Probability: {probs[0][pred_index] * 100:.2f}%")
 ```
