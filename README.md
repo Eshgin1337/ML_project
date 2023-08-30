@@ -17,6 +17,7 @@ This project focuses on implementing machine learning and AI techniques for clas
 - [Model Evaluation](#model-evaluation)
 - [Saving and Loading Models](#saving-and-loading-models)
 - [Image Prediction](#image-prediction)
+- [F1 Score Calculation](#f1-score-calculation)
 
 ## Installation
 
@@ -268,4 +269,17 @@ train_datagen = ImageDataGenerator(rescale=1./255.,
         print(fn)
         print(f"Predicted class: {classes[pred_index]}, Predicted index: {pred_index}")
         print(f"Probability: {probs[0][pred_index] * 100:.2f}%")
+```
+
+## F1 Score Calculation
+1. Calculate and display the F1 score:
+```python
+    from sklearn.metrics import f1_score
+    y_pred = model_inception.predict(test_generator)
+
+    # Calculate the F1 score
+    y_true = test_generator.classes
+    y_pred = np.argmax(y_pred, axis=1)
+    f1score = f1_score(y_true, y_pred, average='weighted')
+    print('F1 score:', f1score)
 ```
