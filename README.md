@@ -13,6 +13,11 @@ This project focuses on implementing machine learning and AI techniques for clas
 - [Model Training](#model-training)
 - [Training Visualization](#training-visualization)
 - [Model Saving](#model-saving)
+- [Transfer Learning with Inception Model](#transfer-learning-with-inception-model)
+- [Model Evaluation](#model-evaluation)
+- [Saving and Loading Models](#saving-and-loading-models)
+- [Image Prediction](#image-prediction)
+
 ## Installation
 
 To run this project, you need to install the required dependencies. Execute the following command to install necessary packages:
@@ -146,4 +151,121 @@ pip install tensorflow matplotlib
 1. Save the trained model:
 ```python
     mymodel = model.save('model_v1.h5')
+```
+
+## Transfer Learning with Inception Model
+1. Define augmented data generators for training and validation:
+
+```python
+train_datagen = ImageDataGenerator(rescale=1./255.,
+                                   horizontal_flip=True,
+                                   fill_mode='nearest',
+                                   zoom_range=0.2,
+                                   rotation_range=40,
+                                   width_shift_range=0.2,
+                                   height_shift_range=0.2,
+                                   shear_range=0.2)
+# ...
+```
+2. Import the necessary library:
+```python
+    import tensorflow_hub as hub
+```
+3. Create the Inception model for transfer learning:
+```python
+    URL = "https://tfhub.dev/google/tf2-preview/inception_v3/feature_vector/4"
+    feature_extractor = hub.KerasLayer(URL, input_shape=(150, 150, 3))
+    feature_extractor.trainable = False
+    model_inception = tf.keras.Sequential([
+        feature_extractor,
+        tf.keras.layers.Dense(21)
+    ])
+
+```
+4. Define a callback to stop training when accuracy reaches 99.9%:
+```python
+    class myCallback(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs={}):
+        if(logs.get('accuracy') > 0.999):
+        print("\nReached 99.9% accuracy, cancelling training!")
+        self.model.stop_training = True
+
+```
+5. Compile and train the Inception model:
+```python
+    model_inception.compile(
+        optimizer='sgd',
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy']
+    )
+
+    EPOCHS = 4
+    callbacks = myCallback()
+    history = model_inception.fit(train_generator,
+                        validation_data=validation_generator,
+                        epochs=EPOCHS,
+                        callbacks=callbacks)
+```
+6. Plot training and validation accuracies:
+```python
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    epochs = range(len(acc))
+
+    plt.plot(epochs, acc, 'r', label='Training accuracy')
+    plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+    plt.title('Training and validation accuracy')
+    plt.legend(loc=0)
+    plt.figure()
+    plt.show()
+```
+
+## Model Evaluation
+1. Evaluate the model on the test dataset:
+```python
+    loss, accuracy = model_inception.evaluate_generator(test_generator)
+```
+
+## Saving and Loading Models
+1. Save the trained Inception model:
+```python
+    model_inception = model_inception.save('model_inception.h5', include_optimizer=True)
+```
+2. Load the saved model:
+```python
+    model_inception = tf.keras.models.load_model('model_inception.h5', custom_objects={'KerasLayer': hub.KerasLayer})
+```
+
+## Image Prediction
+1. Define a function to format input images:
+```python
+    def format_image(image, IMAGE_RES):
+        image = tf.image.resize(image, (IMAGE_RES, IMAGE_RES))
+        image = image/255.0
+        return image
+```
+2. Load and predict images:
+```python
+    from google.colab import files
+    uploaded = files.upload()
+    for fn in uploaded.keys():
+        path = fn
+        img = tf.keras.utils.load_img(path, target_size=(150, 150))
+        x = tf.keras.utils.img_to_array(img)
+        x = format_image(x, 150)
+        plt.imshow(x)
+        x = np.expand_dims(x, axis=0)
+
+        images = np.vstack([x])
+        logits = model_inception.predict(images)
+        probs = tf.nn.softmax(logits)
+
+        # Get the predicted class with the highest probability
+        pred_index = np.argmax(probs)
+        #As index starts from zero, add 1 to index to identify class
+        pred_class = pred_index+1
+        # Print the predicted class and its probability
+        print(fn)
+        print(f"Predicted class: {classes[pred_index]}, Predicted index: {pred_index}")
+        print(f"Probability: {probs[0][pred_index] * 100:.2f}%")
 ```
